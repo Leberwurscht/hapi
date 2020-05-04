@@ -18331,11 +18331,11 @@ def absorptionCoefficient_HT(Components=None,SourceTables=None,partitionFunction
       
     # Parameters OmegaRange,OmegaStep,OmegaWing,OmegaWingHW, and OmegaGrid
     # are deprecated and given for backward compatibility with the older versions.
-    if WavenumberRange:  OmegaRange=WavenumberRange
-    if WavenumberStep:   OmegaStep=WavenumberStep
-    if WavenumberWing:   OmegaWing=WavenumberWing
-    if WavenumberWingHW: OmegaWingHW=WavenumberWingHW
-    if WavenumberGrid:   OmegaGrid=WavenumberGrid
+    if WavenumberRange is not None:  OmegaRange=WavenumberRange
+    if WavenumberStep is not None:   OmegaStep=WavenumberStep
+    if WavenumberWing is not None:   OmegaWing=WavenumberWing
+    if WavenumberWingHW is not None: OmegaWingHW=WavenumberWingHW
+    if WavenumberGrid is not None:   OmegaGrid=WavenumberGrid
 
     # "bug" with 1-element list
     Components = listOfTuples(Components)
@@ -18685,11 +18685,11 @@ def absorptionCoefficient_SDVoigt(Components=None,SourceTables=None,partitionFun
       
     # Paremeters OmegaRange,OmegaStep,OmegaWing,OmegaWingHW, and OmegaGrid
     # are deprecated and given for backward compatibility with the older versions.
-    if WavenumberRange:  OmegaRange=WavenumberRange
-    if WavenumberStep:   OmegaStep=WavenumberStep
-    if WavenumberWing:   OmegaWing=WavenumberWing
-    if WavenumberWingHW: OmegaWingHW=WavenumberWingHW
-    if WavenumberGrid:   OmegaGrid=WavenumberGrid
+    if WavenumberRange is not None:  OmegaRange=WavenumberRange
+    if WavenumberStep is not None:   OmegaStep=WavenumberStep
+    if WavenumberWing is not None:   OmegaWing=WavenumberWing
+    if WavenumberWingHW is not None: OmegaWingHW=WavenumberWingHW
+    if WavenumberGrid is not None:   OmegaGrid=WavenumberGrid
 
     # "bug" with 1-element list
     Components = listOfTuples(Components)
@@ -18933,11 +18933,11 @@ def absorptionCoefficient_Voigt(Components=None,SourceTables=None,partitionFunct
    
     # Paremeters OmegaRange,OmegaStep,OmegaWing,OmegaWingHW, and OmegaGrid
     # are deprecated and given for backward compatibility with the older versions.
-    if WavenumberRange:  OmegaRange=WavenumberRange
-    if WavenumberStep:   OmegaStep=WavenumberStep
-    if WavenumberWing:   OmegaWing=WavenumberWing
-    if WavenumberWingHW: OmegaWingHW=WavenumberWingHW
-    if WavenumberGrid:   OmegaGrid=WavenumberGrid
+    if WavenumberRange is not None:  OmegaRange=WavenumberRange
+    if WavenumberStep is not None:   OmegaStep=WavenumberStep
+    if WavenumberWing is not None:   OmegaWing=WavenumberWing
+    if WavenumberWingHW is not None: OmegaWingHW=WavenumberWingHW
+    if WavenumberGrid is not None:   OmegaGrid=WavenumberGrid
 
     # "bug" with 1-element list
     Components = listOfTuples(Components)
@@ -19172,11 +19172,11 @@ def absorptionCoefficient_Lorentz(Components=None,SourceTables=None,partitionFun
    
     # Paremeters OmegaRange,OmegaStep,OmegaWing,OmegaWingHW, and OmegaGrid
     # are deprecated and given for backward compatibility with the older versions.
-    if WavenumberRange:  OmegaRange=WavenumberRange
-    if WavenumberStep:   OmegaStep=WavenumberStep
-    if WavenumberWing:   OmegaWing=WavenumberWing
-    if WavenumberWingHW: OmegaWingHW=WavenumberWingHW
-    if WavenumberGrid:   OmegaGrid=WavenumberGrid
+    if WavenumberRange is not None:  OmegaRange=WavenumberRange
+    if WavenumberStep is not None:   OmegaStep=WavenumberStep
+    if WavenumberWing is not None:   OmegaWing=WavenumberWing
+    if WavenumberWingHW is not None: OmegaWingHW=WavenumberWingHW
+    if WavenumberGrid is not None:   OmegaGrid=WavenumberGrid
 
     # "bug" with 1-element list
     Components = listOfTuples(Components)
@@ -19412,11 +19412,11 @@ def absorptionCoefficient_Doppler(Components=None,SourceTables=None,partitionFun
     ---
     """
 
-    if WavenumberRange:  OmegaRange=WavenumberRange
-    if WavenumberStep:   OmegaStep=WavenumberStep
-    if WavenumberWing:   OmegaWing=WavenumberWing
-    if WavenumberWingHW: OmegaWingHW=WavenumberWingHW
-    if WavenumberGrid:   OmegaGrid=WavenumberGrid
+    if WavenumberRange is not None:  OmegaRange=WavenumberRange
+    if WavenumberStep is not None:   OmegaStep=WavenumberStep
+    if WavenumberWing is not None:   OmegaWing=WavenumberWing
+    if WavenumberWingHW is not None: OmegaWingHW=WavenumberWingHW
+    if WavenumberGrid is not None:   OmegaGrid=WavenumberGrid
     
     # "bug" with 1-element list
     Components = listOfTuples(Components)
@@ -19602,7 +19602,7 @@ def transmittanceSpectrum(Omegas,AbsorptionCoefficient,Environment={'l':100.},
     ---
     """
     # compatibility with older versions
-    if Wavenumber: Omegas=Wavenumber
+    if Wavenumber is not None: Omegas=Wavenumber
     l = Environment['l']
     Xsect = exp(-AbsorptionCoefficient*l)
     if File: save_to_file(File,Format,Omegas,Xsect)
@@ -19633,7 +19633,7 @@ def absorptionSpectrum(Omegas,AbsorptionCoefficient,Environment={'l':100.},
     ---
     """
     # compatibility with older versions
-    if Wavenumber: Omegas=Wavenumber
+    if Wavenumber is not None: Omegas=Wavenumber
     l = Environment['l']
     Xsect = 1-exp(-AbsorptionCoefficient*l)
     if File: save_to_file(File,Format,Omegas,Xsect)
@@ -19668,7 +19668,7 @@ def radianceSpectrum(Omegas,AbsorptionCoefficient,Environment={'l':100.,'T':296.
     ---
     """
     # compatibility with older versions
-    if Wavenumber: Omegas=Wavenumber
+    if Wavenumber is not None: Omegas=Wavenumber
     l = Environment['l']
     T = Environment['T']
     Alw = 1-exp(-AbsorptionCoefficient*l)
@@ -19850,7 +19850,7 @@ def convolveSpectrum(Omega,CrossSection,Resolution=0.1,AF_wing=10.,
     ---
     """    
     # compatibility with older versions
-    if Wavenumber: Omega=Wavenumber
+    if Wavenumber is not None: Omega=Wavenumber
     step = Omega[1]-Omega[0]
     if step>=Resolution: raise Exception('step must be less than resolution')
     #x = arange(-AF_wing,AF_wing+step,step)
@@ -19869,7 +19869,7 @@ def convolveSpectrumSame(Omega,CrossSection,Resolution=0.1,AF_wing=10.,
     Convolves cross section with a slit function with given parameters.
     """
     # compatibility with older versions
-    if Wavenumber: Omega=Wavenumber
+    if Wavenumber is not None: Omega=Wavenumber
     step = Omega[1]-Omega[0]
     if step>=Resolution: raise Exception('step must be less than resolution')
     #x = arange(-AF_wing,AF_wing+step,step)
