@@ -19121,6 +19121,225 @@ def absorptionCoefficient_Voigt(Components=None,SourceTables=None,partitionFunct
     return Omegas,Xsect
     
 
+
+def absorptionCoefficient_Lorentz_raw(Components=None,SourceTables=None,partitionFunction=PYTIPS2017,
+                                Environment=None,OmegaRange=None,OmegaStep=None,OmegaWing=None,
+                                IntensityThreshold=DefaultIntensityThreshold,
+                                OmegaWingHW=DefaultOmegaWingHW,
+                                GammaL='gamma_air', HITRAN_units=True, LineShift=True,
+                                Format=None, OmegaGrid=None,
+                                WavenumberRange=None,WavenumberStep=None,WavenumberWing=None,
+                                WavenumberWingHW=None,WavenumberGrid=None,
+                                Diluent={},EnvDependences=None):
+    """
+    INPUT PARAMETERS: 
+        Components:  list of tuples [(M,I,D)], where
+                        M - HITRAN molecule number,
+                        I - HITRAN isotopologue number,
+                        D - relative abundance (optional)
+        SourceTables:  list of tables from which to calculate cross-section   (optional)
+        partitionFunction:  pointer to partition function (default is PYTIPS) (optional)
+        Environment:  dictionary containing thermodynamic parameters.
+                        'p' - pressure in atmospheres,
+                        'T' - temperature in Kelvin
+                        Default={'p':1.,'T':296.}
+        WavenumberRange:  wavenumber range to consider.
+        WavenumberStep:   wavenumber step to consider. 
+        WavenumberWing:   absolute wing for calculating a lineshape (in cm-1) 
+        WavenumberWingHW:  relative wing for calculating a lineshape (in halfwidths)
+        IntensityThreshold:  threshold for intensities
+        GammaL:  specifies broadening parameter ('gamma_air' or 'gamma_self')
+        HITRAN_units:  use cm2/molecule (True) or cm-1 (False) for absorption coefficient
+        Format:  c-format of file output (accounts for significant digits in WavenumberStep)
+    OUTPUT PARAMETERS: 
+        Wavenum: wavenumber grid with respect to parameters WavenumberRange and WavenumberStep
+    ---
+    DESCRIPTION:
+        Calculate absorption coefficient using Lorentz profile.
+        Absorption coefficient is calculated at arbitrary temperature and pressure.
+        User can vary a wide range of parameters to control a process of calculation.
+        The choise of these parameters depends on properties of a particular linelist.
+        Default values are a sort of guess which gives a decent precision (on average) 
+        for a reasonable amount of cpu time. To increase calculation accuracy,
+        user should use a trial and error method.
+    ---
+    EXAMPLE OF USAGE:
+        nu,coef = absorptionCoefficient_Lorentz(((2,1),),'co2',WavenumberStep=0.01,
+                                              HITRAN_units=False,GammaL='gamma_self')
+    ---
+    """
+   
+    # Paremeters OmegaRange,OmegaStep,OmegaWing,OmegaWingHW, and OmegaGrid
+    # are deprecated and given for backward compatibility with the older versions.
+    if WavenumberRange is not None:  OmegaRange=WavenumberRange
+    if WavenumberStep is not None:   OmegaStep=WavenumberStep
+    if WavenumberWing is not None:   OmegaWing=WavenumberWing
+    if WavenumberWingHW is not None: OmegaWingHW=WavenumberWingHW
+    if WavenumberGrid is not None:   OmegaGrid=WavenumberGrid
+
+    # "bug" with 1-element list
+    Components = listOfTuples(Components)
+    SourceTables = listOfTuples(SourceTables)
+    
+    # determine final input values
+    Components,SourceTables,Environment,OmegaRange,OmegaStep,OmegaWing,\
+    IntensityThreshold,Format = \
+       getDefaultValuesForXsect(Components,SourceTables,Environment,OmegaRange,
+                                OmegaStep,OmegaWing,IntensityThreshold,Format)
+    
+    # warn user about too large omega step
+    if OmegaStep>0.1: warn('Big wavenumber step: possible accuracy decline')
+
+
+    raw_data = []
+       
+    # reference temperature and pressure
+    Tref = __FloatType__(296.) # K
+    pref = __FloatType__(1.) # atm
+    
+    # actual temperature and pressure
+    T = Environment['T'] # K
+    p = Environment['p'] # atm
+       
+    # create dictionary from Components
+    ABUNDANCES = {}
+    NATURAL_ABUNDANCES = {}
+    for Component in Components:
+        M = Component[0]
+        I = Component[1]
+        if len(Component) >= 3:
+            ni = Component[2]
+        else:
+            try:
+                ni = ISO[(M,I)][ISO_INDEX['abundance']]
+            except KeyError:
+                raise Exception('cannot find component M,I = %d,%d.' % (M,I))
+        ABUNDANCES[(M,I)] = ni
+        NATURAL_ABUNDANCES[(M,I)] = ISO[(M,I)][ISO_INDEX['abundance']]
+        
+    # precalculation of volume concentration
+    if HITRAN_units:
+        factor = __FloatType__(1.0)
+    else:
+        factor = volumeConcentration(p,T) 
+        
+    # setup the default empty environment dependence function
+    if not EnvDependences:
+        EnvDependences = lambda ENV,LINE:{}
+    Env = Environment.copy()
+    Env['Tref'] = Tref
+    Env['pref'] = pref
+  
+    # setup the Diluent variable
+    GammaL = GammaL.lower()
+    if not Diluent:
+        if GammaL == 'gamma_air':
+            Diluent = {'air':1.}
+        elif GammaL == 'gamma_self':
+            Diluent = {'self':1.}
+        else:
+            raise Exception('Unknown GammaL value: %s' % GammaL)
+        
+    # Simple check
+    print(Diluent)  # Added print statement # CHANGED RJH 23MAR18  # Simple check
+    for key in Diluent:
+        val = Diluent[key]
+        if val < 0 or val > 1: # if val < 0 and val > 1:# CHANGED RJH 23MAR18
+            raise Exception('Diluent fraction must be in [0,1]')
+    
+    # SourceTables contain multiple tables
+    for TableName in SourceTables:
+
+        # get the number of rows
+        nline = LOCAL_TABLE_CACHE[TableName]['header']['number_of_rows']
+        
+        # get parameter names for each table
+        parnames = LOCAL_TABLE_CACHE[TableName]['data'].keys()
+        
+        # loop through line centers (single stream)
+        for RowID in range(nline):
+            
+            # Get the custom environment dependences
+            Line = {}
+            for parname in parnames:
+                Line[parname] = LOCAL_TABLE_CACHE[TableName]['data'][parname][RowID]
+            CustomEnvDependences = EnvDependences(Env,Line)
+            
+            # get basic line parameters (lower level)
+            LineCenterDB = LOCAL_TABLE_CACHE[TableName]['data']['nu'][RowID]
+            LineIntensityDB = LOCAL_TABLE_CACHE[TableName]['data']['sw'][RowID]
+            LowerStateEnergyDB = LOCAL_TABLE_CACHE[TableName]['data']['elower'][RowID]
+            MoleculeNumberDB = LOCAL_TABLE_CACHE[TableName]['data']['molec_id'][RowID]
+            IsoNumberDB = LOCAL_TABLE_CACHE[TableName]['data']['local_iso_id'][RowID]
+            
+            # filter by molecule and isotopologue
+            if (MoleculeNumberDB,IsoNumberDB) not in ABUNDANCES: continue
+            
+            # partition functions for T and Tref
+            SigmaT = partitionFunction(MoleculeNumberDB,IsoNumberDB,T)
+            SigmaTref = partitionFunction(MoleculeNumberDB,IsoNumberDB,Tref)
+            
+            # get all environment dependences from voigt parameters
+            
+            #   intensity
+            if 'sw' in CustomEnvDependences:
+                LineIntensity = CustomEnvDependences['sw']
+            else:
+                LineIntensity = EnvironmentDependency_Intensity(LineIntensityDB,T,Tref,SigmaT,SigmaTref,
+                                                                LowerStateEnergyDB,LineCenterDB)
+            
+            #   FILTER by LineIntensity: compare it with IntencityThreshold
+            if LineIntensity < IntensityThreshold: continue
+                       
+            #   pressure broadening coefficient
+            Gamma0 = 0.; Shift0 = 0.;
+            for species in Diluent:
+                species_lower = species # species_lower = species.lower() # CHANGED RJH 23MAR18
+                
+                abun = Diluent[species]
+                
+                gamma_name = 'gamma_' + species_lower
+                try:
+                    Gamma0DB = LOCAL_TABLE_CACHE[TableName]['data'][gamma_name][RowID]
+                except:
+                    Gamma0DB = 0.0
+                
+                n_name = 'n_' + species_lower
+                try:
+                    TempRatioPowerDB = LOCAL_TABLE_CACHE[TableName]['data'][n_name][RowID]
+                    if species_lower == 'self' and TempRatioPowerDB == 0.:
+                        TempRatioPowerDB = LOCAL_TABLE_CACHE[TableName]['data']['n_air'][RowID] # same for self as for air
+                except:
+                    #TempRatioPowerDB = 0                    
+                    TempRatioPowerDB = LOCAL_TABLE_CACHE[TableName]['data']['n_air'][RowID]
+                
+                # Add to the final Gamma0
+                Gamma0 += abun*CustomEnvDependences.get(gamma_name, # default ->
+                          EnvironmentDependency_Gamma0(Gamma0DB,T,Tref,p,pref,TempRatioPowerDB))
+
+                delta_name = 'delta_' + species_lower
+                try:
+                    Shift0DB = LOCAL_TABLE_CACHE[TableName]['data'][delta_name][RowID]
+                except:
+                    Shift0DB = 0.0
+                
+                deltap_name = 'deltap_' + species_lower
+                try:
+                    deltap = LOCAL_TABLE_CACHE[TableName]['data'][deltap_name][RowID]
+                except:
+                    deltap = 0.0
+
+                Shift0 += abun*CustomEnvDependences.get(delta_name, # default ->
+                          ((Shift0DB + deltap*(T-Tref))*p/pref))
+            
+            #   get final wing of the line according to Gamma0, OmegaWingHW and OmegaWing
+            OmegaWingF = max(OmegaWing,OmegaWingHW*Gamma0)
+
+            raw_data.append((factor / NATURAL_ABUNDANCES[(MoleculeNumberDB,IsoNumberDB)] * ABUNDANCES[(MoleculeNumberDB,IsoNumberDB)] * LineIntensity, LineCenterDB+Shift0, Gamma0))
+    
+    return raw_data
+    
+
 def absorptionCoefficient_Lorentz(Components=None,SourceTables=None,partitionFunction=PYTIPS2017,
                                 Environment=None,OmegaRange=None,OmegaStep=None,OmegaWing=None,
                                 IntensityThreshold=DefaultIntensityThreshold,
