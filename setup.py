@@ -44,8 +44,8 @@ else:
     
 # Install the package
 setup(
-    name='hitran-api',
+    name='hapi_initialXsectfork',
     version=HAPI_VERSION,
-    packages=['hapi',],
+    packages=['hapi_initialXsectfork',],
     license='MIT',
 )
