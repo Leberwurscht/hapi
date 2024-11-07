@@ -54,7 +54,7 @@ if 'io' in sys.modules: # define open using Linux-style line endings
 else:
     open_ = open
 
-HAPI_VERSION = '1.2.2.2initialXsectfork'; __version__ = HAPI_VERSION
+HAPI_VERSION = '1.2.2.2.initialXsectfork'; __version__ = HAPI_VERSION
 HAPI_HISTORY = [
 'FIXED GRID BUG (ver. 1.1.0.1)',
 'FIXED OUTPUT FORMAT FOR CROSS-SECTIONS (ver. 1.1.0.1)',
